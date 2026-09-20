@@ -1,0 +1,220 @@
+:root {
+    --bg-dark: #0d0607;
+    --card-bg: #180a0c;
+    --red-primary: #ff2a4b;
+    --red-hover: #e01b3a;
+    --red-glow: rgba(255, 42, 75, 0.35);
+    --text-light: #f5e6e8;
+    --text-muted: #a0888c;
+    --border-color: #331217;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+body {
+    background-color: var(--bg-dark);
+    color: var(--text-light);
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.navbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 30px;
+    background: var(--card-bg);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.logo {
+    font-size: 26px;
+    font-weight: 800;
+    letter-spacing: 1px;
+}
+
+.logo span {
+    color: var(--red-primary);
+    text-shadow: 0 0 10px var(--red-glow);
+}
+
+.status-indicator {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    color: var(--text-muted);
+}
+
+.dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background-color: #555;
+}
+
+.dot.connected { background-color: #2ed573; box-shadow: 0 0 8px #2ed573; }
+.dot.searching { background-color: #ffa502; box-shadow: 0 0 8px #ffa502; }
+
+.container {
+    display: flex;
+    flex: 1;
+    gap: 15px;
+    padding: 15px;
+    overflow: hidden;
+}
+
+/* Videos */
+.video-container {
+    flex: 2;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.video-box {
+    position: relative;
+    flex: 1;
+    background-color: #000;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid var(--border-color);
+}
+
+video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.video-label {
+    position: absolute;
+    bottom: 10px;
+    left: 10px;
+    background: rgba(0, 0, 0, 0.6);
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    backdrop-filter: blur(4px);
+}
+
+/* Chat */
+.chat-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: var(--card-bg);
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+    overflow: hidden;
+}
+
+.messages {
+    flex: 1;
+    padding: 15px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.msg {
+    max-width: 80%;
+    padding: 10px 14px;
+    border-radius: 12px;
+    font-size: 14px;
+    word-break: break-word;
+}
+
+.msg.you {
+    align-self: flex-end;
+    background-color: var(--red-primary);
+    color: white;
+}
+
+.msg.stranger {
+    align-self: flex-start;
+    background-color: #2a1417;
+    border: 1px solid var(--border-color);
+}
+
+.system-msg {
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 13px;
+    margin: 10px 0;
+}
+
+.chat-input-area {
+    display: flex;
+    padding: 12px;
+    background: rgba(0, 0, 0, 0.2);
+    border-top: 1px solid var(--border-color);
+    gap: 10px;
+}
+
+input {
+    flex: 1;
+    background: #000;
+    border: 1px solid var(--border-color);
+    padding: 12px;
+    border-radius: 8px;
+    color: white;
+    outline: none;
+}
+
+input:focus {
+    border-color: var(--red-primary);
+}
+
+/* Buttons */
+.btn {
+    border: none;
+    padding: 12px 20px;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: white;
+}
+
+.btn-primary {
+    background-color: var(--red-primary);
+    box-shadow: 0 0 15px var(--red-glow);
+}
+
+.btn-primary:hover {
+    background-color: var(--red-hover);
+}
+
+.btn-secondary {
+    background-color: #2a1417;
+    border: 1px solid var(--border-color);
+}
+
+.btn-secondary:hover {
+    background-color: #3d1c21;
+}
+
+.controls {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    padding: 15px;
+    background: var(--card-bg);
+    border-top: 1px solid var(--border-color);
+}
+
+button:disabled, input:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}

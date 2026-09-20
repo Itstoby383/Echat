@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>eChat - Random Video & Text Chat</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <header class="navbar">
+        <div class="logo">e<span>Chat</span></div>
+        <div class="status-indicator">
+            <span id="status-dot" class="dot"></span>
+            <span id="status-text">Disconnected</span>
+        </div>
+    </header>
+
+    <main class="container">
+        <!-- Video Section -->
+        <section class="video-container">
+            <div class="video-box">
+                <video id="remote-video" autoplay playsinline></video>
+                <div class="video-label">Stranger</div>
+            </div>
+            <div class="video-box">
+                <video id="local-video" autoplay playsinline muted></video>
+                <div class="video-label">You</div>
+            </div>
+        </section>
+
+        <!-- Chat Section -->
+        <section class="chat-container">
+            <div class="messages" id="messages">
+                <div class="system-msg">Press "Start / Next" to find a stranger!</div>
+            </div>
+            
+            <form id="chat-form" class="chat-input-area">
+                <input type="text" id="chat-input" placeholder="Type a message..." autocomplete="off" disabled>
+                <button type="submit" id="send-btn" disabled><i class="fa-solid fa-paper-plane"></i></button>
+            </form>
+        </section>
+    </main>
+
+    <!-- Controls Bar -->
+    <footer class="controls">
+        <button id="next-btn" class="btn btn-primary"><i class="fa-solid fa-forward"></i> Start / Next</button>
+        <button id="toggle-mic" class="btn btn-secondary"><i class="fa-solid fa-microphone"></i></button>
+        <button id="toggle-cam" class="btn btn-secondary"><i class="fa-solid fa-video"></i></button>
+    </footer>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
