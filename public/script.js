@@ -1,6 +1,13 @@
-const socket = io();
+// Initialize Public Matchmaking Database (Free Tier)
+const firebaseConfig = {
+    databaseURL: "https://echat-matchmaker-default-rtdb.firebaseio.com/"
+};
+if (!firebase.apps.length) {
+    firebase.initializeApp(firebaseConfig);
+}
+const db = firebase.database();
 
-// UI Elements
+// DOM Elements
 const localVideo = document.getElementById('local-video');
 const remoteVideo = document.getElementById('remote-video');
 const nextBtn = document.getElementById('next-btn');
@@ -13,107 +20,148 @@ const statusText = document.getElementById('status-text');
 const toggleMicBtn = document.getElementById('toggle-mic');
 const toggleCamBtn = document.getElementById('toggle-cam');
 
-let localStream;
-let peerConnection;
-let isAudioMuted = false;
-let isVideoMuted = false;
+let peer = null;
+let currentCall = null;
+let currentConn = null;
+let localStream = null;
+let myPeerId = null;
+let queueRef = null;
 
-// WebRTC STUN Servers for Peer-to-Peer connection
-const rtcConfig = {
-    iceServers: [{ urls: 'stun:stun.l.google.com:19020' }]
-};
-
-// Initialize Media (Camera & Mic)
+// 1. Initialize Camera
 async function initMedia() {
     try {
         localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
         localVideo.srcObject = localStream;
     } catch (err) {
-        console.error("Error accessing camera/mic:", err);
-        addSystemMessage("Error accessing video camera/microphone.");
+        console.error("Camera error:", err);
+        addSystemMessage("Camera and Microphone access are required!");
     }
 }
-
 initMedia();
 
-// Socket Events
-nextBtn.addEventListener('click', () => {
-    resetConnection();
-    socket.emit('find-partner');
-    updateStatus('searching', 'Searching for stranger...');
-});
+// 2. Peer Connection Setup
+function initPeer() {
+    disconnectStranger();
 
-socket.on('waiting', () => {
-    updateStatus('searching', 'Waiting for someone to join...');
-});
+    peer = new Peer();
 
-socket.on('paired', async ({ initiate }) => {
-    updateStatus('connected', 'Connected to stranger!');
-    enableChat(true);
+    peer.on('open', (id) => {
+        myPeerId = id;
+        findPartner(id);
+    });
 
-    peerConnection = new RTCPeerConnection(rtcConfig);
+    peer.on('call', (call) => {
+        currentCall = call;
+        call.answer(localStream);
+        call.on('stream', (remoteStream) => {
+            remoteVideo.srcObject = remoteStream;
+            updateStatus('connected', 'Connected to stranger!');
+            enableChat(true);
+        });
+        call.on('close', () => disconnectStranger());
+    });
 
-    // Add local tracks to WebRTC connection
-    if (localStream) {
-        localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
-    }
+    peer.on('connection', (conn) => {
+        currentConn = conn;
+        setupDataConnection(conn);
+    });
 
-    // Handle remote tracks
-    peerConnection.ontrack = (event) => {
-        remoteVideo.srcObject = event.streams[0];
-    };
+    peer.on('error', (err) => {
+        console.error("Peer Error:", err);
+        findNext();
+    });
+}
 
-    // Handle ICE Candidates
-    peerConnection.onicecandidate = (event) => {
-        if (event.candidate) {
-            socket.emit('signal', { candidate: event.candidate });
+// 3. Matchmaking Engine
+function findPartner(peerId) {
+    updateStatus('searching', 'Looking for a stranger...');
+    const queue = db.ref('queue');
+
+    queue.once('value', (snapshot) => {
+        const users = snapshot.val();
+        let matchedPartnerId = null;
+
+        if (users) {
+            // Find first available user in queue
+            for (let key in users) {
+                if (users[key] !== peerId) {
+                    matchedPartnerId = users[key];
+                    // Remove matched user from queue
+                    db.ref('queue/' + key).remove();
+                    break;
+                }
+            }
         }
-    };
 
-    if (initiate) {
-        const offer = await peerConnection.createOffer();
-        await peerConnection.setLocalDescription(offer);
-        socket.emit('signal', { offer });
+        if (matchedPartnerId) {
+            // Connect to Stranger
+            connectToStranger(matchedPartnerId);
+        } else {
+            // Add self to queue
+            queueRef = queue.push(peerId);
+            queueRef.onDisconnect().remove();
+        }
+    });
+}
+
+function connectToStranger(partnerId) {
+    // Call video/audio
+    currentCall = peer.call(partnerId, localStream);
+    currentCall.on('stream', (remoteStream) => {
+        remoteVideo.srcObject = remoteStream;
+        updateStatus('connected', 'Connected to stranger!');
+        enableChat(true);
+    });
+
+    // Connect text chat
+    currentConn = peer.connect(partnerId);
+    setupDataConnection(currentConn);
+}
+
+function setupDataConnection(conn) {
+    conn.on('data', (data) => {
+        addMessage(data, 'stranger');
+    });
+
+    conn.on('close', () => {
+        addSystemMessage("Stranger disconnected.");
+        disconnectStranger();
+    });
+}
+
+// 4. Disconnect & Reset
+function disconnectStranger() {
+    if (queueRef) {
+        queueRef.remove();
+        queueRef = null;
     }
-});
-
-socket.on('signal', async (data) => {
-    if (!peerConnection) return;
-
-    if (data.offer) {
-        await peerConnection.setRemoteDescription(new RTCSessionDescription(data.offer));
-        const answer = await peerConnection.createAnswer();
-        await peerConnection.setLocalDescription(answer);
-        socket.emit('signal', { answer });
-    } else if (data.answer) {
-        await peerConnection.setRemoteDescription(new RTCSessionDescription(data.answer));
-    } else if (data.candidate) {
-        await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
-    }
-});
-
-socket.on('partner-disconnected', () => {
-    addSystemMessage("Stranger disconnected.");
-    resetConnection();
+    if (currentCall) { currentCall.close(); currentCall = null; }
+    if (currentConn) { currentConn.close(); currentConn = null; }
+    if (peer) { peer.destroy(); peer = null; }
+    
+    remoteVideo.srcObject = null;
+    enableChat(false);
     updateStatus('', 'Disconnected');
-});
+}
 
-// Chat Functionality
+function findNext() {
+    disconnectStranger();
+    initPeer();
+}
+
+nextBtn.addEventListener('click', findNext);
+
+// 5. Chat Engine
 chatForm.addEventListener('submit', (e) => {
     e.preventDefault();
     const text = chatInput.value.trim();
-    if (text) {
-        socket.emit('send-message', text);
+    if (text && currentConn) {
+        currentConn.send(text);
         addMessage(text, 'you');
         chatInput.value = '';
     }
 });
 
-socket.on('receive-message', (text) => {
-    addMessage(text, 'stranger');
-});
-
-// Helper Functions
 function addMessage(text, sender) {
     const msgDiv = document.createElement('div');
     msgDiv.classList.add('msg', sender);
@@ -130,13 +178,9 @@ function addSystemMessage(text) {
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
 }
 
-function resetConnection() {
-    if (peerConnection) {
-        peerConnection.close();
-        peerConnection = null;
-    }
-    remoteVideo.srcObject = null;
-    enableChat(false);
+function updateStatus(stateClass, text) {
+    statusDot.className = 'dot ' + stateClass;
+    statusText.textContent = text;
 }
 
 function enableChat(enable) {
@@ -144,28 +188,23 @@ function enableChat(enable) {
     sendBtn.disabled = !enable;
 }
 
-function updateStatus(stateClass, text) {
-    statusDot.className = 'dot ' + stateClass;
-    statusText.textContent = text;
-}
-
 // Media Controls
 toggleMicBtn.addEventListener('click', () => {
     if (localStream) {
-        isAudioMuted = !isAudioMuted;
-        localStream.getAudioTracks()[0].enabled = !isAudioMuted;
-        toggleMicBtn.innerHTML = isAudioMuted 
-            ? '<i class="fa-solid fa-microphone-slash"></i>' 
-            : '<i class="fa-solid fa-microphone"></i>';
+        const audioTrack = localStream.getAudioTracks()[0];
+        audioTrack.enabled = !audioTrack.enabled;
+        toggleMicBtn.innerHTML = audioTrack.enabled 
+            ? '<i class="fa-solid fa-microphone"></i>' 
+            : '<i class="fa-solid fa-microphone-slash"></i>';
     }
 });
 
 toggleCamBtn.addEventListener('click', () => {
     if (localStream) {
-        isVideoMuted = !isVideoMuted;
-        localStream.getVideoTracks()[0].enabled = !isVideoMuted;
-        toggleCamBtn.innerHTML = isVideoMuted 
-            ? '<i class="fa-solid fa-video-slash"></i>' 
-            : '<i class="fa-solid fa-video"></i>';
+        const videoTrack = localStream.getVideoTracks()[0];
+        videoTrack.enabled = !videoTrack.enabled;
+        toggleCamBtn.innerHTML = videoTrack.enabled 
+            ? '<i class="fa-solid fa-video"></i>' 
+            : '<i class="fa-solid fa-video-slash"></i>';
     }
 });
