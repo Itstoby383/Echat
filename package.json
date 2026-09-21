@@ -1,13 +1,16 @@
 {
   "name": "echat",
   "version": "1.0.0",
-  "description": "Real-time random video & text chat",
-  "main": "server.js",
+  "private": true,
   "scripts": {
-    "start": "node server.js"
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
   },
   "dependencies": {
-    "express": "^4.18.2",
-    "socket.io": "^4.7.2"
+    "@upstash/redis": "^1.34.3",
+    "next": "14.2.15",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
   }
 }
